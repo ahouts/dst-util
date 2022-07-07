@@ -5,7 +5,12 @@ local function access(item, ...)
         if result == nil then
             return nil
         end
-        result = result[args[i]]
+        local accessor = args[i]
+        if type(accessor) == "function" then
+            result = accessor(result)
+        else
+            result = result[accessor]
+        end
     end
     return result
 end
