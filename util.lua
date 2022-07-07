@@ -15,8 +15,8 @@ local function display(o, _println)
         end
 
         add_known({x = false, y = false, z = false}, tostring)
-        add_known({false}, function()
-            return "{ function }"
+        add_known({false}, function(item)
+            return "{ " .. tostring(item[1]) .. " }"
         end, function(item)
             return type(item[1]) == "function"
         end)
@@ -51,9 +51,17 @@ local function display(o, _println)
         end
     end
 
+    local ids = {
+        root = 1,
+        beginrow = 2,
+        sep = 3,
+        endkv = 4,
+        endtable = 5,
+    }
+
     local depth = 0
     local head = 1
-    local stack = { {"root", o} }
+    local stack = { {ids.root, o} }
     local line = ""
     local already_seen = {}
 
@@ -90,7 +98,7 @@ local function display(o, _println)
         local t = p[1]
         local val = p[2]
 
-        if t == "root" then
+        if t == ids.root then
             if type(val) == 'table' then
                 local short = short_display(val)
                 if short then
@@ -106,25 +114,26 @@ local function display(o, _println)
 
                     depth = depth + 1
 
-                    push({"endtable"})
+                    push({ids.endtable})
+
                     for k,v in pairs(val) do
-                        push({"endkv"})
-                        push({"root", v})
-                        push({"sep"})
-                        push({"root", k})
-                        push({"beginrow"})
+                        push({ids.endkv})
+                        push({ids.root, v})
+                        push({ids.sep})
+                        push({ids.root, k})
+                        push({ids.beginrow})
                     end
                 end
             else
                 write(tostring(val))
             end
-        elseif t == "beginrow" then
+        elseif t == ids.beginrow then
             indent()
-        elseif t == "sep" then
+        elseif t == ids.sep then
             write(" = ")
-        elseif t == "endkv" then
+        elseif t == ids.endkv then
             writeln(",")
-        elseif t == "endtable" then
+        elseif t == ids.endtable then
             depth = depth - 1
             indent()
             write("}")
