@@ -1,5 +1,17 @@
-local function display(o, _println)
-    local _println = _println or GLOBAL.modprint
+local function access(item, ...)
+    local args = { ... }
+    local result = item
+    for i = 1, #args do
+        if result == nil then
+            return nil
+        end
+        result = result[args[i]]
+    end
+    return result
+end
+
+local function display(o, printer)
+    local println = printer or access(GLOBAL, "modprint") or print
 
     local function short_display(obj)
         local known_types = {}
@@ -7,34 +19,34 @@ local function display(o, _println)
         local validate = {}
 
         local function add_known(t, disp, v)
-            for k,_ in pairs(t) do
+            for k, _ in pairs(t) do
                 known_types[k] = t
             end
             display_known[t] = disp
             validate[t] = v
         end
 
-        add_known({x = false, y = false, z = false}, tostring)
-        add_known({false}, function(item)
+        add_known({ x = false, y = false, z = false }, tostring)
+        add_known({ false }, function(item)
             return "{ " .. tostring(item[1]) .. " }"
         end, function(item)
             return type(item[1]) == "function"
         end)
 
-        for k,_ in pairs(obj) do
+        for k, _ in pairs(obj) do
             if known_types[k] then
                 known_types[k][k] = true
             end
         end
 
-        for _,known in pairs(known_types) do
+        for _, known in pairs(known_types) do
             local correct = true
-            for _,set in pairs(known) do
+            for _, set in pairs(known) do
                 if not set then
                     correct = false
                 end
             end
-            for k,_ in pairs(obj) do
+            for k, _ in pairs(obj) do
                 if not known[k] then
                     correct = false
                 end
@@ -61,7 +73,7 @@ local function display(o, _println)
 
     local depth = 0
     local head = 1
-    local stack = { {ids.root, o} }
+    local stack = { { ids.root, o } }
     local line = ""
     local already_seen = {}
 
@@ -83,7 +95,7 @@ local function display(o, _println)
 
     local function writeln(txt)
         write(txt)
-        _println(line)
+        println(line)
         line = ""
     end
 
@@ -114,14 +126,14 @@ local function display(o, _println)
 
                     depth = depth + 1
 
-                    push({ids.endtable})
+                    push({ ids.endtable })
 
-                    for k,v in pairs(val) do
-                        push({ids.endkv})
-                        push({ids.root, v})
-                        push({ids.sep})
-                        push({ids.root, k})
-                        push({ids.beginrow})
+                    for k, v in pairs(val) do
+                        push({ ids.endkv })
+                        push({ ids.root, v })
+                        push({ ids.sep })
+                        push({ ids.root, k })
+                        push({ ids.beginrow })
                     end
                 end
             else
@@ -142,4 +154,4 @@ local function display(o, _println)
     writeln("")
 end
 
-return { display = display }
+return { display = display, access = access }
