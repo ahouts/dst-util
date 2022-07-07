@@ -15,6 +15,10 @@ local function access(item, ...)
     return result
 end
 
+local function error(...)
+    return (access(GLOBAL, "moderror") or print)(...)
+end
+
 local function get_class(object)
     return (access(GLOBAL, "rawget") or rawget)(object, "_")
 end
@@ -163,4 +167,4 @@ local function display(o, printer)
     writeln("")
 end
 
-return { display = display, access = access }
+return { display = display, access = access, get_class = get_class, error = error }
