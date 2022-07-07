@@ -15,6 +15,10 @@ local function access(item, ...)
     return result
 end
 
+local function get_class(object)
+    return (access(GLOBAL, "rawget") or rawget)(object, "_")
+end
+
 local function display(o, printer)
     local println = printer or access(GLOBAL, "modprint") or print
 
