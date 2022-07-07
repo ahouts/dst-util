@@ -24,6 +24,16 @@ local function init(GLOBAL)
         return (access(GLOBAL, "rawget") or rawget)(object, "_")
     end
 
+    local function any_nil(...)
+        local args = { ... }
+        for i = 1, #args do
+            if args[i] == nil then
+                return true
+            end
+        end
+        return false
+    end
+
     local function display(o, printer)
         local println = printer or access(GLOBAL, "modprint") or print
 
@@ -168,7 +178,13 @@ local function init(GLOBAL)
         writeln("")
     end
 
-    return { display = display, access = access, get_class = get_class, error = error }
+    return {
+        display = display,
+        access = access,
+        get_class = get_class,
+        error = error,
+        any_nil = any_nil,
+    }
 end
 
 return init
