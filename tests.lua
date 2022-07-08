@@ -1,22 +1,24 @@
-
 local util = require("util")({})
 local type = require("type")(util)
 
-local function assert_eq(expected, actual, ...)
-    if expected ~= actual then
-        util.modprint("expected")
-        util.display(expected)
+local function assert_matches(ty, value)
+    if not type.type_check(ty, value) then
+        util.modprint("expected", ty.describe())
         util.modprint("actual")
-        util.display(actual)
-        util.error(...)
+        util.display(value)
+        util.error("did not match when supposed to match")
+    end
+end
+local function assert_not_matches(ty, value)
+    if type.type_check(ty, value) then
+        util.modprint("expected", ty.describe())
+        util.modprint("actual")
+        util.display(value)
+        util.error("matched when not supposed to match")
     end
 end
 
-local function assert(actual, ...)
-    assert_eq(true, actual, ...)
-end
-
-assert(type.type_check(
+assert_matches(
         type.Table({
             [type.String()] = type.Number(),
         }),
@@ -24,12 +26,12 @@ assert(type.type_check(
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = 10,
+                [{ aaa = 2 }] = 10,
             }
         }
-))
+)
 
-assert(type.type_check(
+assert_matches(
         type.Table({
             [type.String("abc")] = type.Number(),
         }),
@@ -37,12 +39,64 @@ assert(type.type_check(
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = 10,
+                [{ aaa = 2 }] = 10,
             }
         }
-))
+)
 
-assert(type.type_check(
+assert_matches(
+        type.Table({
+            abc = type.Number(),
+        }),
+        {
+            abc = 123,
+            def = false,
+            ghi = {
+                [{ aaa = 2 }] = 10,
+            }
+        }
+)
+
+assert_matches(
+        type.Table({
+            abc = 123,
+        }),
+        {
+            abc = 123,
+            def = false,
+            ghi = {
+                [{ aaa = 2 }] = 10,
+            }
+        }
+)
+
+assert_not_matches(
+        type.Table({
+            abc = 1234,
+        }),
+        {
+            abc = 123,
+            def = false,
+            ghi = {
+                [{ aaa = 2 }] = 10,
+            }
+        }
+)
+
+assert_not_matches(
+        type.Table({
+            def = 123,
+        }),
+        {
+            abc = 123,
+            def = false,
+            ghi = {
+                [{ aaa = 2 }] = 10,
+            }
+        }
+)
+
+assert_matches(
         type.Table({
             [type.String()] = type.Number(123),
         }),
@@ -50,72 +104,72 @@ assert(type.type_check(
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = 10,
+                [{ aaa = 2 }] = 10,
             }
         }
-))
+)
 
-assert(type.type_check(
+assert_matches(
         type.Table({
             [type.String()] = type.Table({
-                [type.Table({ [type.String("aaa")] = type.Number(2)})] = type.Boolean(true)
+                [type.Table({ aaa = 2 })] = true
             }),
         }),
         {
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = true,
+                [{ aaa = 2 }] = true,
             }
         }
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Table({
             [type.String()] = type.Table({
-                [type.Table({ [type.String("aaa")] = type.Number(2)})] = type.Boolean(false)
+                [type.Table({ aaa = 2 })] = false
             }),
         }),
         {
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = true,
+                [{ aaa = 2 }] = true,
             }
         }
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Table({
             [type.String()] = type.Table({
-                [type.Table({ [type.String("aaa")] = type.Number(3)})] = type.Boolean(true)
+                [type.Table({ aaa = type.Number(3) })] = true
             }),
         }),
         {
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = true,
+                [{ aaa = 2 }] = true,
             }
         }
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Union(
                 type.Table({})
         ),
         false
-))
+)
 
-assert(type.type_check(
+assert_matches(
         type.Union(
                 type.Table({}),
                 type.Boolean()
         ),
         false
-))
+)
 
-assert(type.type_check(
+assert_matches(
         type.Intersect(
                 type.Table({
                     [type.String("abc")] = type.Number(),
@@ -128,12 +182,12 @@ assert(type.type_check(
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = true,
+                [{ aaa = 2 }] = true,
             }
         }
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Intersect(
                 type.Table({
                     [type.String("abc")] = type.Number(),
@@ -146,47 +200,82 @@ assert(not type.type_check(
             abc = 123,
             def = false,
             ghi = {
-                [{aaa = 2}] = true,
+                [{ aaa = 2 }] = true,
             }
         }
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Intersect(),
         {}
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Union(),
         {}
-))
+)
 
-assert(type.type_check(
+assert_matches(
         type.Table(),
         {}
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Table(),
         false
-))
+)
 
-assert(type.type_check(
+assert_matches(
         type.Class("Torpedo", {
-            [type.String("speed")] = type.Number(),
+            speed = type.Number(),
         }),
         {
             ["_"] = {
                 speed = 100,
             }
         }
-))
+)
 
-assert(not type.type_check(
+assert_not_matches(
         type.Class("Torpedo", {
-            [type.String("speed")] = type.Number(),
+            speed = type.Number(),
         }),
         {
             speed = 100,
         }
-))
+)
+
+assert_matches(
+        type.Union(5, 6),
+        6
+)
+
+assert_not_matches(
+        type.Union(5, 6),
+        7
+)
+
+assert_matches(
+        type.Intersect(5, type.Any()),
+        5
+)
+
+assert_not_matches(
+        type.Intersect(5, 6),
+        5
+)
+
+assert_matches(
+        type.Table({
+            type.Table({
+                type.Table({
+                    "abc"
+                }),
+            }),
+            true,
+        }),
+        {
+            { { "abc" } },
+            true,
+        }
+)

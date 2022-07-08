@@ -1,21 +1,27 @@
 local function init(util)
+    local tcheck_type = {
+        any = 1,
+        all = 2,
+        single = 3,
+    }
+
     local function tcheck_any(checks)
         return {
-            t = "any",
+            t = tcheck_type.any,
             checks = checks,
         }
     end
 
     local function tcheck_all(checks)
         return {
-            t = "all",
+            t = tcheck_type.all,
             checks = checks,
         }
     end
 
     local function tcheck(checker, obj)
         return {
-            t = "single",
+            t = tcheck_type.single,
             checker = checker,
             obj = obj,
         }
@@ -67,9 +73,9 @@ local function init(util)
                 local current = head()
 
                 if type(current) == "boolean" then
-                elseif current.t == "single" then
+                elseif current.t == tcheck_type.single then
                     set_stack(current.checker.validate(current.obj))
-                elseif current.t == "all" then
+                elseif current.t == tcheck_type.all then
                     if #current.checks == 0 then
                         set_stack(true)
                     else
@@ -96,7 +102,7 @@ local function init(util)
                             end
                         end
                     end
-                elseif current.t == "any" then
+                elseif current.t == tcheck_type.any then
                     if #current.checks == 0 then
                         set_stack(false)
                     else
@@ -137,7 +143,7 @@ local function init(util)
     local function Any()
         return {
             describe = function()
-                return "any"
+                return "<any>"
             end,
             validate = function()
                 return true
@@ -148,7 +154,10 @@ local function init(util)
     local function Boolean(value)
         return {
             describe = function()
-                return "boolean"
+                if value ~= nil then
+                    return tostring(value)
+                end
+                return "<a boolean>"
             end,
             validate = function(obj)
                 return type(obj) == "boolean" and (value == nil or value == obj)
@@ -159,7 +168,10 @@ local function init(util)
     local function Number(value)
         return {
             describe = function()
-                return "number"
+                if value ~= nil then
+                    return tostring(value)
+                end
+                return "<a number>"
             end,
             validate = function(obj)
                 return type(obj) == "number" and (value == nil or value == obj)
@@ -181,7 +193,10 @@ local function init(util)
     local function String(value)
         return {
             describe = function()
-                return "string"
+                if value ~= nil then
+                    return tostring(value)
+                end
+                return "<a string>"
             end,
             validate = function(obj)
                 return type(obj) == "string" and (value == nil or value == obj)
@@ -192,12 +207,28 @@ local function init(util)
     local function Function()
         return {
             describe = function()
-                return "function"
+                return "<a function>"
             end,
             validate = function(obj)
                 return type(obj) == "function"
             end,
         }
+    end
+
+    local function Primitive(value)
+        if type(value) == "nil" then
+            return Nil()
+        elseif type(value) == "boolean" then
+            return Boolean(value)
+        elseif type(value) == "number" then
+            return Number(value)
+        elseif type(value) == "string" then
+            return String(value)
+        elseif type(value) == "function" then
+            return Function()
+        else
+            util.error("unknown primitive")
+        end
     end
 
     local function Table(fields)
@@ -206,6 +237,12 @@ local function init(util)
             describe = function()
                 local desc = "table { "
                 for k, v in pairs(fields) do
+                    if type(k) ~= "table" then
+                        k = Primitive(k)
+                    end
+                    if type(v) ~= "table" then
+                        v = Primitive(v)
+                    end
                     desc = desc .. k.describe() .. " = " .. v.describe() .. ", "
                 end
                 return desc .. "}"
@@ -216,9 +253,15 @@ local function init(util)
                 end
                 local to_check = {}
                 for k, v in pairs(fields) do
+                    if type(k) ~= "table" then
+                        k = Primitive(k)
+                    end
+                    if type(v) ~= "table" then
+                        v = Primitive(v)
+                    end
                     local kv_check = {}
                     for ok, ov in pairs(obj) do
-                        table.insert(kv_check, tcheck_all({tcheck(k, ok), tcheck(v, ov)}))
+                        table.insert(kv_check, tcheck_all({ tcheck(k, ok), tcheck(v, ov) }))
                     end
                     table.insert(to_check, tcheck_any(kv_check))
                 end
@@ -260,6 +303,9 @@ local function init(util)
             validate = function(obj)
                 local to_check = {}
                 for _, option in pairs(options) do
+                    if type(option) ~= "table" then
+                        option = Primitive(option)
+                    end
                     table.insert(to_check, tcheck(option, obj))
                 end
                 return tcheck_any(to_check)
@@ -283,6 +329,9 @@ local function init(util)
                 end
                 local to_check = {}
                 for _, option in pairs(options) do
+                    if type(option) ~= "table" then
+                        option = Primitive(option)
+                    end
                     table.insert(to_check, tcheck(option, obj))
                 end
                 return tcheck_all(to_check)

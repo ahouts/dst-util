@@ -20,8 +20,9 @@ local function init(GLOBAL)
         return (access(GLOBAL, "modprint") or print)(...)
     end
 
-    local function error(...)
-        return (access(GLOBAL, "moderror") or function(...) print(...); os.exit(-1)  end)(...)
+    local _error = error
+    local function error(msg)
+        return (access(GLOBAL, "moderror") or _error)(msg)
     end
 
     local function get_class(object)
