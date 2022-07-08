@@ -16,8 +16,12 @@ local function init(GLOBAL)
         return result
     end
 
+    local function modprint(...)
+        return (access(GLOBAL, "modprint") or print)(...)
+    end
+
     local function error(...)
-        return (access(GLOBAL, "moderror") or print)(...)
+        return (access(GLOBAL, "moderror") or function(...) print(...); os.exit(-1)  end)(...)
     end
 
     local function get_class(object)
@@ -35,7 +39,7 @@ local function init(GLOBAL)
     end
 
     local function display(o, printer)
-        local println = printer or access(GLOBAL, "modprint") or print
+        local println = printer or modprint
 
         local function short_display(obj)
             local known_types = {}
@@ -184,6 +188,7 @@ local function init(GLOBAL)
         get_class = get_class,
         error = error,
         any_nil = any_nil,
+        modprint = modprint,
     }
 end
 
