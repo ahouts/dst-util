@@ -276,6 +276,12 @@ local function init(util)
             describe = function()
                 local desc = name .. " { "
                 for k, v in pairs(fields) do
+                    if type(k) ~= "table" then
+                        k = Primitive(k)
+                    end
+                    if type(v) ~= "table" then
+                        v = Primitive(v)
+                    end
                     desc = desc .. k.describe() .. " = " .. v.describe() .. ", "
                 end
                 return desc .. "}"
