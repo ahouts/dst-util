@@ -281,6 +281,9 @@ local function init(util)
                 return desc .. "}"
             end,
             validate = function(obj)
+                if type(obj) ~= "table" then
+                    return false
+                end
                 local class = util.get_class(obj)
                 if class == nil then
                     return false
