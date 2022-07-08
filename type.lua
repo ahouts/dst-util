@@ -148,6 +148,7 @@ local function init(util)
             validate = function()
                 return true
             end,
+            is_fast = true,
         }
     end
 
@@ -162,6 +163,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "boolean" and (value == nil or value == obj)
             end,
+            is_fast = value ~= nil,
         }
     end
 
@@ -176,6 +178,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "number" and (value == nil or value == obj)
             end,
+            is_fast = value ~= nil,
         }
     end
 
@@ -187,6 +190,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "nil"
             end,
+            is_fast = true,
         }
     end
 
@@ -201,6 +205,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "string" and (value == nil or value == obj)
             end,
+            is_fast = value ~= nil,
         }
     end
 
@@ -212,6 +217,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "function"
             end,
+            is_fast = true,
         }
     end
 
@@ -251,6 +257,8 @@ local function init(util)
                 if type(obj) ~= "table" then
                     return false
                 end
+
+                local obj_invalid = false
                 local to_check = {}
                 for k, v in pairs(fields) do
                     if type(k) ~= "table" then
@@ -259,14 +267,39 @@ local function init(util)
                     if type(v) ~= "table" then
                         v = Primitive(v)
                     end
+
                     local kv_check = {}
                     for ok, ov in pairs(obj) do
-                        table.insert(kv_check, tcheck_all({ tcheck(k, ok), tcheck(v, ov) }))
+                        local kv_invalid = false
+                        if k.is_fast then
+                            if not k.validate(ok) then
+                                kv_invalid = true
+                            end
+                        end
+                        if v.is_fast then
+                            if not v.validate(ov) then
+                                kv_invalid = true
+                            end
+                        end
+                        if not kv_invalid then
+                            table.insert(kv_check, tcheck_all({ tcheck(k, ok), tcheck(v, ov) }))
+                        end
                     end
-                    table.insert(to_check, tcheck_any(kv_check))
+
+                    if #kv_check == 0 then
+                        obj_invalid = true
+                    else
+                        table.insert(to_check, tcheck_any(kv_check))
+                    end
                 end
-                return tcheck_all(to_check)
+
+                if obj_invalid then
+                    return false
+                else
+                    return tcheck_all(to_check)
+                end
             end,
+            is_fast = false,
         }
     end
 
@@ -296,6 +329,7 @@ local function init(util)
                 end
                 return table.validate(class)
             end,
+            is_fast = false,
         }
     end
 
@@ -319,6 +353,7 @@ local function init(util)
                 end
                 return tcheck_any(to_check)
             end,
+            is_fast = #options == 0,
         }
     end
 
@@ -345,6 +380,7 @@ local function init(util)
                 end
                 return tcheck_all(to_check)
             end,
+            is_fast = #options == 0,
         }
     end
 
