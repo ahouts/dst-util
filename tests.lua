@@ -1,6 +1,6 @@
 
 local util = require("util")({})
-local type = require("type")({})
+local type = require("type")(util)
 
 local function assert_eq(expected, actual, ...)
     if expected ~= actual then

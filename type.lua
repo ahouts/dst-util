@@ -1,6 +1,4 @@
-local function init(GLOBAL)
-    local util = require("util")(GLOBAL)
-
+local function init(util)
     local function tcheck_any(checks)
         return {
             t = "any",
