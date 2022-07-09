@@ -3,9 +3,22 @@ local function init(util)
         any = 1,
         all = 2,
         single = 3,
+        invert = 4,
     }
 
     local function tcheck_any(checks)
+        local all_booleans = true
+        for _, check in pairs(checks) do
+            if check == true then
+                return true
+            end
+            if type(check) ~= "boolean" then
+                all_booleans = false
+            end
+        end
+        if all_booleans then
+            return false
+        end
         return {
             t = tcheck_type.any,
             checks = checks,
@@ -13,13 +26,38 @@ local function init(util)
     end
 
     local function tcheck_all(checks)
+        local all_booleans = true
+        for _, check in pairs(checks) do
+            if check == false then
+                return false
+            end
+            if type(check) ~= "boolean" then
+                all_booleans = false
+            end
+        end
+        if all_booleans then
+            return true
+        end
         return {
             t = tcheck_type.all,
             checks = checks,
         }
     end
 
+    local function tcheck_invert(check)
+        if type(check) == "boolean" then
+            return not check
+        end
+        return {
+            t = tcheck_type.invert,
+            check = check,
+        }
+    end
+
     local function tcheck(checker, obj)
+        if checker.constant_stack then
+            return checker.validate(obj)
+        end
         return {
             t = tcheck_type.single,
             checker = checker,
@@ -32,10 +70,25 @@ local function init(util)
         local stack = {}
         local progress_made = true
 
+        local function walk(item, idx)
+            if item.t == tcheck_type.all or item.t == tcheck_type.any then
+                return item.checks[idx]
+            elseif item.t == tcheck_type.invert then
+                return item.check
+            end
+        end
+        local function assign(item, idx, value)
+            if item.t == tcheck_type.all or item.t == tcheck_type.any then
+                item.checks[idx] = value
+            elseif item.t == tcheck_type.invert then
+                item.check = value
+            end
+        end
+
         local function head()
             local result = root
             for _, v in pairs(stack) do
-                result = result.checks[v]
+                result = walk(result, v)
             end
             return result
         end
@@ -46,12 +99,12 @@ local function init(util)
             local second_to_last = nil
             for _, v in pairs(stack) do
                 second_to_last = last
-                last = last.checks[v]
+                last = walk(last, v)
             end
             if second_to_last == nil then
                 root = value
             else
-                second_to_last.checks[stack[#stack]] = value
+                assign(second_to_last, stack[#stack], value)
             end
         end
 
@@ -129,6 +182,14 @@ local function init(util)
                             end
                         end
                     end
+                elseif current.t == tcheck_type.invert then
+                    if type(current.check) == "boolean" then
+                        set_stack(not current.check)
+                    else
+                        table.insert(stack, 0)
+                        table.insert(paths_to_check, stack_copy())
+                        table.remove(stack)
+                    end
                 end
             end
         end
@@ -148,7 +209,7 @@ local function init(util)
             validate = function()
                 return true
             end,
-            is_fast = true,
+            constant_stack = true,
         }
     end
 
@@ -163,7 +224,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "boolean" and (value == nil or value == obj)
             end,
-            is_fast = value ~= nil,
+            constant_stack = true,
         }
     end
 
@@ -178,7 +239,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "number" and (value == nil or value == obj)
             end,
-            is_fast = value ~= nil,
+            constant_stack = true,
         }
     end
 
@@ -190,7 +251,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "nil"
             end,
-            is_fast = true,
+            constant_stack = true,
         }
     end
 
@@ -205,7 +266,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "string" and (value == nil or value == obj)
             end,
-            is_fast = value ~= nil,
+            constant_stack = true,
         }
     end
 
@@ -217,7 +278,7 @@ local function init(util)
             validate = function(obj)
                 return type(obj) == "function"
             end,
-            is_fast = true,
+            constant_stack = true,
         }
     end
 
@@ -262,41 +323,25 @@ local function init(util)
                     return false
                 end
 
-                local obj_invalid = false
                 local to_check = {}
                 for k, v in pairs(fields) do
-                    local kv_check = {}
+                    local k_check = {}
+                    for ok, _ in pairs(obj) do
+                        table.insert(k_check, tcheck(k, ok))
+                    end
+                    local key_not_found = tcheck_invert(tcheck_any(k_check))
+                    local nil_ok = tcheck_all({tcheck(k, nil), tcheck(v, nil), key_not_found})
+
+                    local kv_check = {nil_ok}
                     for ok, ov in pairs(obj) do
-                        local kv_invalid = false
-                        if k.is_fast then
-                            if not k.validate(ok) then
-                                kv_invalid = true
-                            end
-                        end
-                        if v.is_fast then
-                            if not v.validate(ov) then
-                                kv_invalid = true
-                            end
-                        end
-                        if not kv_invalid then
-                            table.insert(kv_check, tcheck_all({ tcheck(k, ok), tcheck(v, ov) }))
-                        end
+                        table.insert(kv_check, tcheck_all({ tcheck(k, ok), tcheck(v, ov) }))
                     end
 
-                    if #kv_check == 0 then
-                        obj_invalid = true
-                    else
-                        table.insert(to_check, tcheck_any(kv_check))
-                    end
+                    table.insert(to_check, tcheck_any(kv_check))
                 end
-
-                if obj_invalid then
-                    return false
-                else
-                    return tcheck_all(to_check)
-                end
+                return tcheck_all(to_check)
             end,
-            is_fast = false,
+            constant_stack = false,
         }
     end
 
@@ -331,7 +376,7 @@ local function init(util)
                 end
                 return table.validate(class)
             end,
-            is_fast = false,
+            constant_stack = false,
         }
     end
 
@@ -357,7 +402,7 @@ local function init(util)
                 end
                 return tcheck_any(to_check)
             end,
-            is_fast = #options == 0,
+            constant_stack = #options == 0,
         }
     end
 
@@ -389,7 +434,7 @@ local function init(util)
                 end
                 return tcheck_all(to_check)
             end,
-            is_fast = #options == 0,
+            constant_stack = #options == 0,
         }
     end
 

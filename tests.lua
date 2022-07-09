@@ -279,3 +279,77 @@ assert_matches(
             true,
         }
 )
+
+local variant_1 = type.Table({
+    id = "variant_1",
+    field_1 = type.String(),
+    field_2 = type.Union(type.String(), type.Number()),
+    field_3 = type.Any(),
+})
+
+local variant_2 = type.Table({
+    id = "variant_2",
+    field_1 = type.String(),
+    [type.Union(type.Nil(), type.String("field_7"))] = type.Union(type.Nil(), type.String()),
+})
+
+local variant_3 = type.Table({
+    id = "variant_3",
+})
+
+local sum_type = type.Union(variant_1, variant_2, variant_3)
+
+assert_matches(
+        sum_type,
+        {
+            id = "variant_1",
+            field_1 = "asdf",
+            field_2 = 123,
+            field_3 = {},
+        }
+)
+
+assert_not_matches(
+        sum_type,
+        {
+            id = "variant_1",
+            field_1 = 321,
+            field_2 = 123,
+            field_3 = {},
+        }
+)
+
+assert_matches(
+        sum_type,
+        {
+            id = "variant_2",
+            field_1 = "asdf",
+        }
+)
+
+assert_not_matches(
+        sum_type,
+        {
+            id = "variant_2",
+            field_1 = "asdf",
+            field_7 = false,
+        }
+)
+
+assert_matches(
+        sum_type,
+        {
+            id = "variant_3",
+            aaa = "123",
+        }
+)
+
+assert_not_matches(
+        sum_type,
+        {
+            id = "variant_4",
+        }
+)
+
+assert_not_matches(sum_type, {})
+assert_not_matches(sum_type, true)
