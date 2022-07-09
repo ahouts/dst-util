@@ -299,7 +299,7 @@ local function init(util)
     end
 
     local function Table(fields)
-        tmp_fields = fields or {}
+        local tmp_fields = fields or {}
         fields = {}
         for key, value in pairs(tmp_fields) do
             if type(key) ~= "table" then
