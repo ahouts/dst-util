@@ -238,17 +238,21 @@ local function init(util)
     end
 
     local function Table(fields)
-        fields = fields or {}
+        tmp_fields = fields or {}
+        fields = {}
+        for key, value in pairs(tmp_fields) do
+            if type(key) ~= "table" then
+                key = Primitive(key)
+            end
+            if type(value) ~= "table" then
+                value = Primitive(value)
+            end
+            fields[key] = value
+        end
         return {
             describe = function()
                 local desc = "table { "
                 for k, v in pairs(fields) do
-                    if type(k) ~= "table" then
-                        k = Primitive(k)
-                    end
-                    if type(v) ~= "table" then
-                        v = Primitive(v)
-                    end
                     desc = desc .. k.describe() .. " = " .. v.describe() .. ", "
                 end
                 return desc .. "}"
@@ -261,13 +265,6 @@ local function init(util)
                 local obj_invalid = false
                 local to_check = {}
                 for k, v in pairs(fields) do
-                    if type(k) ~= "table" then
-                        k = Primitive(k)
-                    end
-                    if type(v) ~= "table" then
-                        v = Primitive(v)
-                    end
-
                     local kv_check = {}
                     for ok, ov in pairs(obj) do
                         local kv_invalid = false
@@ -305,16 +302,21 @@ local function init(util)
 
     local function Class(name, fields)
         local table = Table(fields)
+        tmp_fields = fields or {}
+        fields = {}
+        for key, value in pairs(tmp_fields) do
+            if type(key) ~= "table" then
+                key = Primitive(key)
+            end
+            if type(value) ~= "table" then
+                value = Primitive(value)
+            end
+            fields[key] = value
+        end
         return {
             describe = function()
                 local desc = name .. " { "
                 for k, v in pairs(fields) do
-                    if type(k) ~= "table" then
-                        k = Primitive(k)
-                    end
-                    if type(v) ~= "table" then
-                        v = Primitive(v)
-                    end
                     desc = desc .. k.describe() .. " = " .. v.describe() .. ", "
                 end
                 return desc .. "}"
@@ -335,6 +337,11 @@ local function init(util)
 
     local function Union(...)
         local options = { ... }
+        for i, option in pairs(options) do
+            if type(option) ~= "table" then
+                options[i] = Primitive(option)
+            end
+        end
         return {
             describe = function()
                 local desc = "union( "
@@ -346,9 +353,6 @@ local function init(util)
             validate = function(obj)
                 local to_check = {}
                 for _, option in pairs(options) do
-                    if type(option) ~= "table" then
-                        option = Primitive(option)
-                    end
                     table.insert(to_check, tcheck(option, obj))
                 end
                 return tcheck_any(to_check)
@@ -359,6 +363,11 @@ local function init(util)
 
     local function Intersect(...)
         local options = { ... }
+        for i, option in pairs(options) do
+            if type(option) ~= "table" then
+                options[i] = Primitive(option)
+            end
+        end
         return {
             describe = function()
                 local desc = "intersect( "
