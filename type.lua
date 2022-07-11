@@ -65,7 +65,112 @@ local function init(util)
         }
     end
 
+    local function Any()
+        return {
+            describe = function()
+                return "<any>"
+            end,
+            validate = function()
+                return true
+            end,
+            constant_stack = true,
+        }
+    end
+
+    local function Boolean(value)
+        return {
+            describe = function()
+                if value ~= nil then
+                    return tostring(value)
+                end
+                return "<a boolean>"
+            end,
+            validate = function(obj)
+                return type(obj) == "boolean" and (value == nil or value == obj)
+            end,
+            constant_stack = true,
+        }
+    end
+
+    local function Number(value)
+        return {
+            describe = function()
+                if value ~= nil then
+                    return tostring(value)
+                end
+                return "<a number>"
+            end,
+            validate = function(obj)
+                return type(obj) == "number" and (value == nil or value == obj)
+            end,
+            constant_stack = true,
+        }
+    end
+
+    local function Nil()
+        return {
+            describe = function()
+                return "nil"
+            end,
+            validate = function(obj)
+                return type(obj) == "nil"
+            end,
+            constant_stack = true,
+        }
+    end
+
+    local function String(value)
+        return {
+            describe = function()
+                if value ~= nil then
+                    return tostring(value)
+                end
+                return "<a string>"
+            end,
+            validate = function(obj)
+                return type(obj) == "string" and (value == nil or value == obj)
+            end,
+            constant_stack = true,
+        }
+    end
+
+    local function Function()
+        return {
+            describe = function()
+                return "<a function>"
+            end,
+            validate = function(obj)
+                return type(obj) == "function"
+            end,
+            constant_stack = true,
+        }
+    end
+
+    local function Primitive(value)
+        if type(value) == "nil" then
+            return Nil()
+        elseif type(value) == "boolean" then
+            return Boolean(value)
+        elseif type(value) == "number" then
+            return Number(value)
+        elseif type(value) == "string" then
+            return String(value)
+        elseif type(value) == "function" then
+            return Function()
+        else
+            util.error("unknown primitive")
+        end
+    end
+
+    local function wrap_primitive(obj)
+        if type(obj) ~= "table" then
+            return Primitive(obj)
+        end
+        return obj
+    end
+
     local function type_check(ty, obj)
+        ty = wrap_primitive(ty)
         local root = ty.validate(obj)
         local stack = {}
         local progress_made = true
@@ -201,113 +306,12 @@ local function init(util)
         return root
     end
 
-    local function Any()
-        return {
-            describe = function()
-                return "<any>"
-            end,
-            validate = function()
-                return true
-            end,
-            constant_stack = true,
-        }
-    end
-
-    local function Boolean(value)
-        return {
-            describe = function()
-                if value ~= nil then
-                    return tostring(value)
-                end
-                return "<a boolean>"
-            end,
-            validate = function(obj)
-                return type(obj) == "boolean" and (value == nil or value == obj)
-            end,
-            constant_stack = true,
-        }
-    end
-
-    local function Number(value)
-        return {
-            describe = function()
-                if value ~= nil then
-                    return tostring(value)
-                end
-                return "<a number>"
-            end,
-            validate = function(obj)
-                return type(obj) == "number" and (value == nil or value == obj)
-            end,
-            constant_stack = true,
-        }
-    end
-
-    local function Nil()
-        return {
-            describe = function()
-                return "nil"
-            end,
-            validate = function(obj)
-                return type(obj) == "nil"
-            end,
-            constant_stack = true,
-        }
-    end
-
-    local function String(value)
-        return {
-            describe = function()
-                if value ~= nil then
-                    return tostring(value)
-                end
-                return "<a string>"
-            end,
-            validate = function(obj)
-                return type(obj) == "string" and (value == nil or value == obj)
-            end,
-            constant_stack = true,
-        }
-    end
-
-    local function Function()
-        return {
-            describe = function()
-                return "<a function>"
-            end,
-            validate = function(obj)
-                return type(obj) == "function"
-            end,
-            constant_stack = true,
-        }
-    end
-
-    local function Primitive(value)
-        if type(value) == "nil" then
-            return Nil()
-        elseif type(value) == "boolean" then
-            return Boolean(value)
-        elseif type(value) == "number" then
-            return Number(value)
-        elseif type(value) == "string" then
-            return String(value)
-        elseif type(value) == "function" then
-            return Function()
-        else
-            util.error("unknown primitive")
-        end
-    end
-
     local function Table(fields)
         local tmp_fields = fields or {}
         fields = {}
         for key, value in pairs(tmp_fields) do
-            if type(key) ~= "table" then
-                key = Primitive(key)
-            end
-            if type(value) ~= "table" then
-                value = Primitive(value)
-            end
+            key = wrap_primitive(key)
+            value = wrap_primitive(value)
             fields[key] = value
         end
         return {
@@ -330,9 +334,9 @@ local function init(util)
                         table.insert(k_check, tcheck(k, ok))
                     end
                     local key_not_found = tcheck_invert(tcheck_any(k_check))
-                    local nil_ok = tcheck_all({tcheck(k, nil), tcheck(v, nil), key_not_found})
+                    local nil_ok = tcheck_all({ tcheck(k, nil), tcheck(v, nil), key_not_found })
 
-                    local kv_check = {nil_ok}
+                    local kv_check = { nil_ok }
                     for ok, ov in pairs(obj) do
                         table.insert(kv_check, tcheck_all({ tcheck(k, ok), tcheck(v, ov) }))
                     end
@@ -350,12 +354,8 @@ local function init(util)
         tmp_fields = fields or {}
         fields = {}
         for key, value in pairs(tmp_fields) do
-            if type(key) ~= "table" then
-                key = Primitive(key)
-            end
-            if type(value) ~= "table" then
-                value = Primitive(value)
-            end
+            key = wrap_primitive(key)
+            value = wrap_primitive(value)
             fields[key] = value
         end
         return {
@@ -383,9 +383,7 @@ local function init(util)
     local function Union(...)
         local options = { ... }
         for i, option in pairs(options) do
-            if type(option) ~= "table" then
-                options[i] = Primitive(option)
-            end
+            options[i] = wrap_primitive(option)
         end
         return {
             describe = function()
@@ -409,9 +407,7 @@ local function init(util)
     local function Intersect(...)
         local options = { ... }
         for i, option in pairs(options) do
-            if type(option) ~= "table" then
-                options[i] = Primitive(option)
-            end
+            options[i] = wrap_primitive(option)
         end
         return {
             describe = function()
@@ -427,15 +423,31 @@ local function init(util)
                 end
                 local to_check = {}
                 for _, option in pairs(options) do
-                    if type(option) ~= "table" then
-                        option = Primitive(option)
-                    end
+                    option = wrap_primitive(option)
                     table.insert(to_check, tcheck(option, obj))
                 end
                 return tcheck_all(to_check)
             end,
             constant_stack = #options == 0,
         }
+    end
+
+    local function TypedFunction(arg_types, return_type, func)
+        return function(...)
+            local args = { ... }
+            for i, arg_type in pairs(arg_types) do
+                if not type_check(arg_type, args[i]) then
+                    util.display(args[i])
+                    util.error("argument " .. i .. " to TypedFunction not of type " .. arg_type.describe())
+                end
+            end
+            local ret = func(...)
+            if not type_check(return_type, ret) then
+                util.display(ret)
+                util.error("return value of TypedFunction not of type " .. return_type.describe())
+            end
+            return ret
+        end
     end
 
     return {
@@ -450,6 +462,7 @@ local function init(util)
         Class = Class,
         Union = Union,
         Intersect = Intersect,
+        TypedFunction = TypedFunction,
     }
 end
 

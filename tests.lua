@@ -17,6 +17,10 @@ local function assert_not_matches(ty, value)
         util.error("matched when not supposed to match")
     end
 end
+local function assert_throws(func, ...)
+    local success, mesg = pcall(func, ...)
+    assert_matches(type.Table({ type.Boolean(false), type.Any() }), { success, mesg })
+end
 
 assert_matches(
         type.Table({
@@ -353,3 +357,31 @@ assert_not_matches(
 
 assert_not_matches(sum_type, {})
 assert_not_matches(sum_type, true)
+
+local my_func = type.TypedFunction(
+        {
+            type.Number(),
+            type.String(),
+            type.Union(type.Nil(), type.String())
+        },
+        type.Table({ ok = type.Boolean(), }),
+        function(the_number, the_string, maybe_string)
+            if the_number == 5 then
+                return "AAAAA"
+            end
+            return { ok = true }
+        end)
+
+assert_throws(my_func, 1, 1)
+assert_throws(my_func)
+assert_throws(my_func, 1, "a", 2)
+assert_throws(my_func, 5, "a")
+
+assert_matches(
+        type.Table({ ok = true }),
+        my_func(1, "a")
+)
+assert_matches(
+        type.Table({ ok = true }),
+        my_func(1, "a", "b")
+)
