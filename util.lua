@@ -10,7 +10,17 @@ local function init(GLOBAL)
             if type(accessor) == "function" then
                 result = accessor(result)
             else
-                result = result[accessor]
+                local found = false
+                for k,_ in pairs(result) do
+                    if k == accessor then
+                        found = true
+                    end
+                end
+                if found then
+                    result = result[accessor]
+                else
+                    result = nil
+                end
             end
         end
         return result
