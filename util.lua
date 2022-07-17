@@ -43,7 +43,7 @@ local function init(GLOBAL)
 
     local function any_nil(...)
         local args = { ... }
-        for i = 1, #args do
+        for i = 1, select("#", ...) do
             if args[i] == nil then
                 return true
             end
