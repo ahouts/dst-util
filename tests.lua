@@ -385,3 +385,6 @@ assert_matches(
         type.Table({ ok = true }),
         my_func(1, "a", "b")
 )
+
+assert(util.access({abc = {[3] = 100}}, "abc", 3) == 100)
+assert(util.access({abc = {[3] = 100}}, "abe", 3) == nil)
