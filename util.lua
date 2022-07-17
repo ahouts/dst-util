@@ -11,9 +11,11 @@ local function init(GLOBAL)
                 result = accessor(result)
             else
                 local found = false
-                for k,_ in pairs(result) do
-                    if k == accessor then
-                        found = true
+                if type(found) == "table" then
+                    for k,_ in pairs(result) do
+                        if k == accessor then
+                            found = true
+                        end
                     end
                 end
                 if found then
