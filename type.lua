@@ -351,7 +351,7 @@ local function init(util)
 
     local function Class(name, fields)
         local table = Table(fields)
-        tmp_fields = fields or {}
+        local tmp_fields = fields or {}
         fields = {}
         for key, value in pairs(tmp_fields) do
             key = wrap_primitive(key)
